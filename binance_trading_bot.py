@@ -2,6 +2,7 @@ import os
 import logging
 from binance.client import Client
 from binance.enums import *
+from binance.exceptions import BinanceAPIException
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -24,7 +25,7 @@ def get_symbol_info(symbol):
 def round_step_size(quantity, step_size):
     return round(quantity - (quantity % step_size), 8)
 
-def place_order(symbol, side, quantity, leverage):
+def place_order(symbol, side, quantity, leverage, position_side):
     symbol_info = get_symbol_info(symbol)
     step_size = float(next(filter(lambda f: f['filterType'] == 'LOT_SIZE', symbol_info['filters']))['stepSize'])
     quantity = round_step_size(quantity, step_size)
@@ -36,14 +37,14 @@ def place_order(symbol, side, quantity, leverage):
             side=side,
             type=ORDER_TYPE_MARKET,
             quantity=quantity,
-            positionSide='BOTH'
+            positionSide=position_side
         )
         return order
     except Exception as e:
         logger.error(f"Error placing order: {e}")
         raise
 
-def set_take_profit(symbol, side, quantity, price):
+def set_take_profit(symbol, side, quantity, price, position_side):
     symbol_info = get_symbol_info(symbol)
     tick_size = float(next(filter(lambda f: f['filterType'] == 'PRICE_FILTER', symbol_info['filters']))['tickSize'])
     price = round_step_size(price, tick_size)
@@ -54,10 +55,10 @@ def set_take_profit(symbol, side, quantity, price):
         type=ORDER_TYPE_TAKE_PROFIT_MARKET,
         quantity=quantity,
         stopPrice=price,
-        positionSide='BOTH'
+        positionSide=position_side
     )
 
-def set_stop_loss(symbol, side, quantity, price):
+def set_stop_loss(symbol, side, quantity, price, position_side):
     symbol_info = get_symbol_info(symbol)
     tick_size = float(next(filter(lambda f: f['filterType'] == 'PRICE_FILTER', symbol_info['filters']))['tickSize'])
     price = round_step_size(price, tick_size)
@@ -68,7 +69,7 @@ def set_stop_loss(symbol, side, quantity, price):
         type=ORDER_TYPE_STOP_MARKET,
         quantity=quantity,
         stopPrice=price,
-        positionSide='BOTH'
+        positionSide=position_side
     )
 
 def main():
@@ -85,15 +86,15 @@ def main():
             print(f"Placing long and short orders for {symbol} with leverage {leverage}...")
 
             # Place long and short orders
-            long_order = place_order(symbol, SIDE_BUY, quantity, leverage)
-            short_order = place_order(symbol, SIDE_SELL, quantity, leverage)
+            long_order = place_order(symbol, SIDE_BUY, quantity, leverage, 'LONG')
+            short_order = place_order(symbol, SIDE_SELL, quantity, leverage, 'SHORT')
 
             long_price = float(long_order['fills'][0]['price'])
             short_price = float(short_order['fills'][0]['price'])
 
             # Set take profit orders
-            set_take_profit(symbol, SIDE_SELL, quantity, long_price * 1.10)
-            set_take_profit(symbol, SIDE_BUY, quantity, short_price * 0.90)
+            set_take_profit(symbol, SIDE_SELL, quantity, long_price * 1.10, 'LONG')
+            set_take_profit(symbol, SIDE_BUY, quantity, short_price * 0.90, 'SHORT')
 
             print(f"Long order placed at {long_price}, take profit at {long_price * 1.10}")
             print(f"Short order placed at {short_price}, take profit at {short_price * 0.90}")
@@ -109,7 +110,7 @@ def main():
                             remaining_position = position['positionSide']
                             remaining_quantity = abs(float(position['positionAmt']))
                             stop_loss_price = entry_price * 0.95 if remaining_position == 'LONG' else entry_price * 1.05
-                            set_stop_loss(symbol, SIDE_SELL if remaining_position == 'LONG' else SIDE_BUY, remaining_quantity, stop_loss_price)
+                            set_stop_loss(symbol, SIDE_SELL if remaining_position == 'LONG' else SIDE_BUY, remaining_quantity, stop_loss_price, remaining_position)
                             print(f"Take profit triggered. Setting stop loss at {stop_loss_price} for remaining {remaining_position} position.")
                             return
         except BinanceAPIException as e:
