@@ -84,11 +84,11 @@ def main():
         symbol = input("Enter the token symbol (e.g., BTCUSDT): ").upper()
         try:
             leverage = 5
-            total_amount_usdt = 10
-
+            amount_usdt = float(input("Enter the amount in USDT you want to trade: "))
+            
             symbol_info = get_symbol_info(symbol)
             mark_price = float(client.futures_mark_price(symbol=symbol)['markPrice'])
-            quantity = total_amount_usdt / mark_price
+            quantity = amount_usdt / mark_price
 
             print(f"Placing long and short orders for {symbol} with leverage {leverage}...")
 
