@@ -72,6 +72,13 @@ def set_stop_loss(symbol, side, quantity, price, position_side):
         positionSide=position_side
     )
 
+def get_order_price(order):
+    if 'fills' in order and len(order['fills']) > 0:
+        return float(order['fills'][0]['price'])
+    else:
+        order_info = client.futures_get_order(symbol=order['symbol'], orderId=order['orderId'])
+        return float(order_info['avgPrice']) if 'avgPrice' in order_info else float(order_info['price'])
+
 def main():
     while True:
         symbol = input("Enter the token symbol (e.g., BTCUSDT): ").upper()
@@ -89,8 +96,8 @@ def main():
             long_order = place_order(symbol, SIDE_BUY, quantity, leverage, 'LONG')
             short_order = place_order(symbol, SIDE_SELL, quantity, leverage, 'SHORT')
 
-            long_price = float(long_order['fills'][0]['price'])
-            short_price = float(short_order['fills'][0]['price'])
+            long_price = get_order_price(long_order)
+            short_price = get_order_price(short_order)
 
             # Set take profit orders
             set_take_profit(symbol, SIDE_SELL, quantity, long_price * 1.10, 'LONG')
