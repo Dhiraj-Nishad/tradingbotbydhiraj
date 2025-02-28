@@ -52,7 +52,7 @@ def set_take_profit(symbol, side, quantity, price, position_side):
     client.futures_create_order(
         symbol=symbol,
         side=side,
-        type=ORDER_TYPE_TAKE_PROFIT_MARKET,
+        type=ORDER_TYPE_TAKE_PROFIT,
         quantity=quantity,
         stopPrice=price,
         positionSide=position_side
